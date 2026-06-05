@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+logs/app/*.log
+!logs/app/.gitkeep
+.idea/
