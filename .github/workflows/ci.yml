@@ -1,0 +1,137 @@
+name: CI Quality and Security
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-security:
+    name: Python Quality and Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            app/requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run Ruff linting
+        run: python -m ruff check app tests scripts
+
+      - name: Run unit tests with coverage
+        run: >
+          python -m pytest -q
+          --cov=app
+          --cov-report=term-missing
+          --cov-report=xml
+          --cov-fail-under=80
+
+      - name: Audit Python dependencies
+        run: pip-audit -r app/requirements.txt
+
+      - name: Run Bandit security analysis
+        run: bandit -r app -ll
+
+  docker-validation:
+    name: Docker Validation and Build
+    needs: quality-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      GRAFANA_ADMIN_USER: admin
+      GRAFANA_ADMIN_PASSWORD: ci-only-temporary-password
+      APP_VERSION: ci
+      APP_COLOR: blue
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
+
+      - name: Build application image
+        run: docker build --tag observability-app:ci ./app
+
+      - name: Start application container
+        run: |
+          docker run --detach \
+            --name observability-app-ci \
+            --publish 5000:5000 \
+            observability-app:ci
+
+      - name: Verify application endpoint
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent \
+              http://localhost:5000/health \
+              > health-response.json
+            then
+              cat health-response.json
+              exit 0
+            fi
+
+            echo "Waiting for application: ${attempt}/30"
+            sleep 2
+          done
+
+          docker logs observability-app-ci
+          exit 1
+
+      - name: Verify Docker health check
+        run: |
+          for attempt in {1..30}; do
+            status="$(
+              docker inspect \
+                --format='{{.State.Health.Status}}' \
+                observability-app-ci
+            )"
+
+            echo "Container health: ${status}"
+
+            if [ "${status}" = "healthy" ]; then
+              exit 0
+            fi
+
+            if [ "${status}" = "unhealthy" ]; then
+              docker logs observability-app-ci
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+          docker logs observability-app-ci
+          exit 1
+
+      - name: Clean up test container
+        if: always()
+        run: docker rm --force observability-app-ci || true
