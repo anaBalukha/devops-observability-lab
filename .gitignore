@@ -11,3 +11,6 @@ htmlcov/
 .ruff_cache/
 logs/health/*.log
 !logs/health/.gitkeep
+.deployment/active_color
+.deployment/previous_color
+nginx/active.conf 

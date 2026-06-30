@@ -56,6 +56,11 @@ else {
     Write-Host "Using the existing local .env file."
 }
 
+if (-not (Test-Path "nginx/active.conf")) {
+    Write-Host "Creating initial blue gateway configuration..."
+    Copy-Item "nginx/default.conf" "nginx/active.conf"
+}
+
 Write-Host "Validating Docker Compose configuration..."
 docker compose config --quiet
 

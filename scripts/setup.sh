@@ -51,6 +51,11 @@ else
     echo "Using the existing local .env file."
 fi
 
+if [[ ! -f "nginx/active.conf" ]]; then
+    echo "Creating initial blue gateway configuration..."
+    cp nginx/default.conf nginx/active.conf
+fi
+
 echo "Validating Docker Compose configuration..."
 docker compose config --quiet
 
