@@ -4,3 +4,13 @@ __pycache__/
 logs/app/*.log
 !logs/app/.gitkeep
 .idea/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+logs/health/*.log
+!logs/health/.gitkeep
+.deployment/active_color
+.deployment/previous_color
+nginx/active.conf 
