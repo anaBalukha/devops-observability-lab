@@ -5,8 +5,12 @@ services:
     container_name: observability-app
     ports:
       - "5000:5000"
+    environment:
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      APP_COLOR: ${APP_COLOR:-blue}
     volumes:
       - app_logs:/var/log/app
+    restart: unless-stopped
     networks:
       - observability
 
@@ -24,6 +28,7 @@ services:
       - "--storage.tsdb.path=/prometheus"
     depends_on:
       - app
+    restart: unless-stopped
     networks:
       - observability
 
@@ -36,6 +41,7 @@ services:
       - ./loki/loki-config.yml:/etc/loki/local-config.yml:ro
       - loki-data:/loki
     command: -config.file=/etc/loki/local-config.yml
+    restart: unless-stopped
     networks:
       - observability
 
@@ -49,6 +55,7 @@ services:
     depends_on:
       - app
       - loki
+    restart: unless-stopped
     networks:
       - observability
 
@@ -58,9 +65,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -68,6 +75,7 @@ services:
     depends_on:
       - prometheus
       - loki
+    restart: unless-stopped
     networks:
       - observability
 
