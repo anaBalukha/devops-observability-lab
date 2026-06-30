@@ -79,6 +79,32 @@ services:
     networks:
       - observability
 
+  health-monitor:
+    image: python:3.13.14-slim
+    container_name: health-monitor
+    environment:
+      CHECK_INTERVAL_SECONDS: "10"
+      REQUEST_TIMEOUT_SECONDS: "3"
+      HEALTH_LOG_FILE: /var/log/health/health.log
+      APP_HEALTH_URL: http://app:5000/health
+      PROMETHEUS_HEALTH_URL: http://prometheus:9090/-/ready
+      LOKI_HEALTH_URL: http://loki:3100/ready
+      GRAFANA_HEALTH_URL: http://grafana:3000/api/health
+    volumes:
+      - ./scripts/health_monitor.py:/monitor/health_monitor.py:ro
+      - ./logs/health:/var/log/health
+    command:
+      - python
+      - /monitor/health_monitor.py
+    depends_on:
+      - app
+      - prometheus
+      - loki
+      - grafana
+    restart: unless-stopped
+    networks:
+      - observability
+
 networks:
   observability:
     driver: bridge

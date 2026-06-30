@@ -9,3 +9,5 @@ logs/app/*.log
 .coverage
 htmlcov/
 .ruff_cache/
+logs/health/*.log
+!logs/health/.gitkeep
