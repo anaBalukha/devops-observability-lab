@@ -6,7 +6,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./logs/app:/var/log/app
+      - app_logs:/var/log/app
     networks:
       - observability
 
@@ -44,7 +44,7 @@ services:
     container_name: promtail
     volumes:
       - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
-      - ./logs/app:/var/log/app:ro
+      - app_logs:/var/log/app:ro
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - app
@@ -79,3 +79,4 @@ volumes:
   prometheus-data:
   grafana-data:
   loki-data:
+  app_logs:
